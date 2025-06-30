@@ -1,6 +1,6 @@
 # %%
 from cost_pred.ingest_lib_dental import ingest_dental
-from cost_pred.lms_prompt import (get_gemini_api_key, dental_cement)
+from cost_pred.lms_prompt import (get_gemini_api_key, determine_product_fit)
 
 import duckdb 
 from duckdb.typing import DuckDBPyType as dbpt
