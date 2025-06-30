@@ -8,8 +8,7 @@ from duckdb.typing import DuckDBPyType as dbpt
 
 with duckdb.connect("cdc_cost.duckdb") as con:
 
-    con.create_function("dental_cement", dental_cement, [dbpt(str), dbpt(str), dbpt(str)], dbpt(str))
-
+    # completes the set-up, ingestion
     con.execute("""
             CREATE OR REPLACE TABLE lib_dental_cdt as 
                 SELECT * FROM read_parquet("data/lakehouse/bronze/2025-05-02_Liberty*")""")
@@ -47,8 +46,16 @@ with duckdb.connect("cdc_cost.duckdb") as con:
                 GROUP BY all 
                 ORDER BY avg_negotiated_rate DESC""")
 
+# %%
+
+# analysis commands
+with duckdb.connect("cdc_cost.duckdb") as con:
+
+    # adds UDF functions
+    con.create_function("dental_cement", dental_cement, [dbpt(str), dbpt(str), dbpt(str)], dbpt(str))
+
     con.execute("""
-            CREATE OR REPLACE TABLE lib_dental_deepseek AS
+        CREATE OR REPLACE TABLE lib_dental_deepseek AS
             SELECT DISTINCT 
                   billing_code
                 , code_desc
@@ -57,13 +64,6 @@ with duckdb.connect("cdc_cost.duckdb") as con:
                 , max_negotiated_rate
                 , dif_negotiated_rate
 
-            FROM lib_dental_cost
-            """)
+            FROM lib_dental_cost""")
 
     con.sql("""SELECT * FROM lib_dental_deepseek""").show()
-
-# %%
-
-with duckdb.connect("cdc_cost.duckdb") as con:
-
-    con.execute("""""")
