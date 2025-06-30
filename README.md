@@ -1,6 +1,6 @@
 # Pricing Analysis for Common Dental Codes
 
-Analyzes the Common Dental Codes (CDTs) and their prices from a variety of health insurance providers to determine which procedures would utilize UCleaner LLC's products.
+Analyzes the Common Dental Terminology codes (CDTs) and their prices from a variety of health insurance providers to determine which procedures would utilize UCleaner LLC's products.
 
 ## Dental Insurance Providers
 
