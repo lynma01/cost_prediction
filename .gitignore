@@ -6,6 +6,9 @@ dist/
 wheels/
 *.egg-info
 
+# Duckdb-generated files
+*.DS_Store
+
 # Secrets
 .ini
 gemini_key.json
