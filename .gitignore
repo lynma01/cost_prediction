@@ -5,7 +5,10 @@ build/
 dist/
 wheels/
 *.egg-info
+
+# Secrets
 .ini
+gemini_key.json
 
 # Virtual environments
 .venv
