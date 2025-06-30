@@ -5,7 +5,15 @@ build/
 dist/
 wheels/
 *.egg-info
+
+# Duckdb-generated files
+*.DS_Store
+data/cdc_cost.duckdb
+
+# Secrets
 .ini
+gemini_key.json
 
 # Virtual environments
 .venv
+
