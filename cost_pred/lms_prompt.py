@@ -1,11 +1,9 @@
 # %%
-import json
 import configparser
 import os
 from google import genai
 
 # %%
-
 def get_gemini_api_key(config_file: str = "../.ini") -> str | None:
     """
     Reads the Gemini API key from a configuration file.
@@ -40,6 +38,4 @@ def dental_cement(cdt_col: str, desc_col: str, key: str = get_gemini_api_key()) 
 
     return str(response.candidates[0].content.parts[0].text)
 
-# %%
-print(dental_cement("D5222", "Immediate mandibular partial denture - resin base (including retentive/clasping materials, rests and teeth)"))
 # %%
