@@ -5,6 +5,7 @@ build/
 dist/
 wheels/
 *.egg-info
+.pytest_cache
 
 # Duckdb-generated files
 *.DS_Store
@@ -13,7 +14,14 @@ data/cdc_cost.duckdb
 # Secrets
 .ini
 gemini_key.json
+.env
 
 # Virtual environments
 .venv
+.claude
+.vscode
 
+# Quarto rendered output
+*.html
+_output
+.quarto
