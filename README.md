@@ -10,13 +10,25 @@ Analyzes the Common Dental Terminology codes (CDTs) and their prices from a vari
 - [Kaiser Permanente](https://healthy.kaiserpermanente.org/maryland-virginia-washington-dc/front-door/machine-readable)
   - Liberty Dental
 
-## Images
+## Key Findings
 
-### Classification Distribution
-
-How Claude Haiku classified each CDT code by product fit.
+Of 452 CDT procedure codes analyzed, **167 (37%) are directly addressable** by UCleaner's tissue-regeneration biologic — meaning dental providers can bill for the product using existing CDT codes that insurers already reimburse. No new reimbursement category is needed. (see: [Classification Distribution](notebooks/product_fit.qmd#classification-distribution), [Addressable Procedures](notebooks/market_opportunity.qmd#addressable-procedures))
 
 [![Classification distribution](images/classification_dist.png)](notebooks/product_fit.qmd#classification-distribution)
+
+**Pricing benchmarks** from negotiated rates set clear targets for each product component (see: [Cost Aggregation](notebooks/market_opportunity.qmd#cost-aggregation)):
+
+| Component | Addressable Codes | Mean Reimbursement Rate |
+|---|---|---|
+| Crown only | 54 | ~$792 |
+| Full product (hydrogel + crown) | 100 | ~$491 |
+| Hydrogel only | 13 | ~$123 |
+
+**The full product should lead.** The combined hydrogel + crown offering addresses 100 codes — nearly 6x the hydrogel-only market and 2x the crown-only market. Leading with the standalone hydrogel would leave the majority of the addressable market on the table. (see: [Component Breakdown](notebooks/market_opportunity.qmd#component-breakdown))
+
+Procedures with the highest rate variability across plans represent the strongest entry points — weaker pricing consensus among payers means more negotiating room for a new entrant. (see: [Rate Spread Analysis](notebooks/rate_analysis.qmd#rate-spread-analysis))
+
+Full analysis: **[Conclusions](notebooks/conclusions.qmd)**
 
 ## Methods
 

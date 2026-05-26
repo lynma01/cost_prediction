@@ -1,0 +1,88 @@
+---
+title: "Conclusions: Strategic Implications for UCleaner"
+format:
+  html:
+    code-fold: true
+execute:
+  echo: true
+jupyter: python3
+---
+
+```{python}
+import polars as pl
+
+from cost_pred.db import get_connection
+
+con = get_connection(read_only=True)
+
+total_codes = con.sql("SELECT COUNT(DISTINCT billing_code) FROM lib_dental_deepseek").fetchone()[0]
+
+addressable = pl.from_arrow(
+    con.sql("""
+        SELECT
+              d.classification
+            , d.billing_code
+            , c.avg_negotiated_rate
+            , c.dif_negotiated_rate
+        FROM lib_dental_deepseek d
+        JOIN lib_dental_cost c USING (billing_code, code_desc)
+        WHERE d.classification IN ('HYDROGEL', 'CROWN', 'BOTH')
+    """).arrow()
+)
+
+n_addressable = addressable["billing_code"].n_unique()
+pct_addressable = n_addressable / total_codes
+
+crown_mean = addressable.filter(pl.col("classification") == "CROWN")["avg_negotiated_rate"].mean()
+hydrogel_mean = addressable.filter(pl.col("classification") == "HYDROGEL")["avg_negotiated_rate"].mean()
+both_mean = addressable.filter(pl.col("classification") == "BOTH")["avg_negotiated_rate"].mean()
+
+n_crown = addressable.filter(pl.col("classification") == "CROWN")["billing_code"].n_unique()
+n_hydrogel = addressable.filter(pl.col("classification") == "HYDROGEL")["billing_code"].n_unique()
+n_both = addressable.filter(pl.col("classification") == "BOTH")["billing_code"].n_unique()
+
+print(f"Addressable: {n_addressable} of {total_codes} codes ({pct_addressable:.0%})")
+print(f"  CROWN:    {n_crown} codes, mean rate ${crown_mean:,.2f}")
+print(f"  BOTH:     {n_both} codes, mean rate ${both_mean:,.2f}")
+print(f"  HYDROGEL: {n_hydrogel} codes, mean rate ${hydrogel_mean:,.2f}")
+
+con.close()
+```
+
+## 1. Reimbursement Pathway
+
+The most immediate barrier for a novel dental biologic is not clinical efficacy — it is whether insurers will pay for it. This analysis demonstrates that UCleaner's product maps directly to **{n_addressable} existing CDT billing codes** that insurers already reimburse at established rates (see: [Classification Distribution](product_fit.qmd#classification-distribution), [Addressable Procedures](market_opportunity.qmd#addressable-procedures)).
+
+This matters because UCleaner does not need to petition for a new reimbursement category. Dental providers can bill for UCleaner's product using the same CDT codes they already use for crowns, fillings, and combination procedures. The existing reimbursement infrastructure is already in place — the product slots into it.
+
+Of the 452 CDT codes analyzed across Kaiser Permanente's Liberty Dental network, 37% are directly addressable by UCleaner's product. That is not a niche — it is a substantial share of routine restorative dentistry.
+
+## 2. Pricing Anchor
+
+Negotiated rates from this dataset provide a defensible pricing range for each product component (see: [Cost Aggregation](market_opportunity.qmd#cost-aggregation), [Component Breakdown](market_opportunity.qmd#component-breakdown)):
+
+- **Crown procedures** average **~$792** per code (range: $74–$1,201)
+- **Combined procedures** (hydrogel + crown) average **~$491** per code (range: $51–$1,190)
+- **Hydrogel-only procedures** average **~$123** per code (range: $11–$356)
+
+These figures represent what insurers currently pay for the conventional procedures that UCleaner would replace. To be attractive to both providers and payers, UCleaner's pricing should land at or below these benchmarks — offering comparable clinical outcomes at a competitive rate.
+
+The rate spread data (see: [Rate Spread Analysis](rate_analysis.qmd#rate-spread-analysis)) also reveals where pricing is most inconsistent across plans. High-variability procedures signal weaker pricing consensus among payers — and therefore more negotiating room for a new entrant.
+
+## 3. Go-to-Market Prioritization
+
+The classification breakdown reveals a clear product strategy signal (see: [Component Breakdown](market_opportunity.qmd#component-breakdown), [Classification by CDT Category](product_fit.qmd#classification-by-cdt-category)):
+
+| Component | Addressable Codes | Mean Rate |
+|---|---|---|
+| BOTH (full product) | 100 | $491 |
+| CROWN only | 54 | $792 |
+| HYDROGEL only | 13 | $123 |
+
+The full product (hydrogel + crown together) addresses **100 codes** — nearly 6x the hydrogel-only market (13 codes) and almost 2x the crown-only market (54 codes). This suggests that leading with the combined offering captures the largest addressable market from day one.
+
+The hydrogel alone, while clinically valuable, maps to relatively few billing codes at lower reimbursement rates. A phased launch that starts with the hydrogel as a standalone product would leave the majority of the addressable market on the table.
+
+## Caveats
+
+This analysis is based on negotiated rate data from a single insurer network (Kaiser Permanente / Liberty Dental) across three state markets (Maryland, Virginia, Washington DC). While the patterns are directionally informative, the absolute dollar figures should not be extrapolated nationally without broader data. The classification of CDT codes was performed by an LLM (Claude Haiku) and validated through spot-checks (see: [Spot-Check Examples](product_fit.qmd#spot-check-examples), [Edge Cases](product_fit.qmd#edge-cases)) — edge cases exist and are documented there.
