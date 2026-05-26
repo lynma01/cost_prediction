@@ -1,0 +1,142 @@
+---
+title: "Product Fit: LLM Classification Analysis"
+format:
+  html:
+    code-fold: false
+execute:
+  echo: true
+jupyter: python3
+---
+
+## Setup
+
+```{python}
+import altair as alt
+import polars as pl
+
+from cost_pred.db import get_connection
+
+con = get_connection(read_only=True)
+```
+
+## Classification Distribution
+
+Breakdown of how Claude Haiku classified each CDT code: HYDROGEL (filling substitute), CROWN (crown substitute), BOTH (full product), or NONE (not applicable).
+
+```{python}
+classifications = pl.from_arrow(
+    con.sql("""
+        SELECT
+              d.billing_code
+            , d.code_desc
+            , d.classification
+            , d.reasoning
+            , c.avg_negotiated_rate
+            , c.min_negotiated_rate
+            , c.max_negotiated_rate
+        FROM lib_dental_deepseek d
+        JOIN lib_dental_cost c USING (billing_code, code_desc)
+    """).arrow()
+)
+
+distribution = classifications.group_by("classification").agg(
+    pl.len().alias("count"),
+    pl.col("avg_negotiated_rate").mean().round(2).alias("mean_avg_rate"),
+)
+distribution.sort("count", descending=True)
+```
+
+```{python}
+alt.Chart(distribution).mark_arc(innerRadius=50).encode(
+    alt.Theta("count:Q"),
+    alt.Color("classification:N", scale=alt.Scale(
+        domain=["HYDROGEL", "CROWN", "BOTH", "NONE"],
+        range=["#4c78a8", "#f58518", "#e45756", "#bab0ac"]
+    )),
+    alt.Tooltip(["classification", "count", "mean_avg_rate"]),
+).properties(
+    title="CDT Code Classification Distribution",
+    width=400,
+    height=350,
+)
+```
+
+## Classification by CDT Category
+
+CDT codes follow a structure where the first digits indicate the category (D2xxx = restorative, D6xxx = prosthodontics, etc.). How does classification vary across categories?
+
+```{python}
+by_category = classifications.with_columns(
+    pl.col("billing_code").str.slice(0, 2).alias("cdt_prefix")
+)
+
+category_dist = by_category.group_by(["cdt_prefix", "classification"]).agg(
+    pl.len().alias("count")
+).sort(["cdt_prefix", "classification"])
+
+category_dist
+```
+
+```{python}
+alt.Chart(category_dist).mark_bar().encode(
+    alt.X("cdt_prefix:N", title="CDT Code Prefix"),
+    alt.Y("count:Q", title="Number of Codes"),
+    alt.Color("classification:N", scale=alt.Scale(
+        domain=["HYDROGEL", "CROWN", "BOTH", "NONE"],
+        range=["#4c78a8", "#f58518", "#e45756", "#bab0ac"]
+    )),
+    alt.Tooltip(["cdt_prefix", "classification", "count"]),
+).properties(
+    title="Classification by CDT Code Category",
+    width=600,
+    height=350,
+)
+```
+
+## Spot-Check Examples
+
+Representative examples from each classification category with the LLM's reasoning.
+
+```{python}
+for label in ["HYDROGEL", "CROWN", "BOTH", "NONE"]:
+    subset = classifications.filter(pl.col("classification") == label).head(3)
+    if len(subset) > 0:
+        print(f"\n{'='*60}")
+        print(f"  {label}")
+        print(f"{'='*60}")
+        for row in subset.iter_rows(named=True):
+            print(f"\n  {row['billing_code']}: {row['code_desc']}")
+            print(f"  Avg Rate: ${row['avg_negotiated_rate']}")
+            print(f"  Reasoning: {row['reasoning'][:200]}...")
+```
+
+## Edge Cases
+
+Codes that might be misclassified — either PARSE_ERROR results or cases where the text-based flags (contains_crown, etc.) disagree with the LLM classification.
+
+```{python}
+edge_cases = pl.from_arrow(
+    con.sql("""
+        SELECT
+              d.billing_code
+            , d.code_desc
+            , d.classification
+            , d.reasoning
+            , c.contains_crown
+            , c.contains_inlay
+            , c.contains_filling
+        FROM lib_dental_deepseek d
+        JOIN lib_dental_cost c USING (billing_code, code_desc)
+        WHERE d.classification = 'PARSE_ERROR'
+           OR (c.contains_crown AND d.classification = 'NONE')
+           OR (c.contains_filling AND d.classification = 'NONE')
+    """).arrow()
+)
+
+print(f"Potential edge cases: {len(edge_cases)}")
+edge_cases
+```
+
+```{python}
+con.close()
+```

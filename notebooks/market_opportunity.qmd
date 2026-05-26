@@ -1,0 +1,127 @@
+---
+title: "Market Opportunity: Addressable Market for UCleaner"
+format:
+  html:
+    code-fold: false
+execute:
+  echo: true
+jupyter: python3
+---
+
+## Setup
+
+```{python}
+import altair as alt
+import polars as pl
+
+from cost_pred.db import get_connection
+
+con = get_connection(read_only=True)
+```
+
+## Addressable Procedures
+
+Filter to procedures where the LLM classified the CDT code as substitutable by UCleaner's product (HYDROGEL, CROWN, or BOTH).
+
+```{python}
+addressable = pl.from_arrow(
+    con.sql("""
+        SELECT
+              d.billing_code
+            , d.code_desc
+            , d.classification
+            , c.avg_negotiated_rate
+            , c.min_negotiated_rate
+            , c.max_negotiated_rate
+            , c.dif_negotiated_rate
+        FROM lib_dental_deepseek d
+        JOIN lib_dental_cost c USING (billing_code, code_desc)
+        WHERE d.classification IN ('HYDROGEL', 'CROWN', 'BOTH')
+    """).arrow()
+)
+
+total_codes = con.sql("SELECT COUNT(DISTINCT billing_code) FROM lib_dental_deepseek").fetchone()[0]
+addressable_codes = len(addressable)
+
+print(f"Total CDT codes analyzed: {total_codes}")
+print(f"Addressable codes (HYDROGEL/CROWN/BOTH): {addressable_codes}")
+print(f"Addressable share: {addressable_codes / total_codes:.1%}")
+```
+
+## Cost Aggregation
+
+Total market value of substitutable procedures based on average negotiated rates across all plans in the dataset.
+
+```{python}
+summary = addressable.group_by("classification").agg(
+    pl.len().alias("num_codes"),
+    pl.col("avg_negotiated_rate").mean().round(2).alias("mean_rate"),
+    pl.col("avg_negotiated_rate").min().round(2).alias("min_rate"),
+    pl.col("avg_negotiated_rate").max().round(2).alias("max_rate"),
+    pl.col("avg_negotiated_rate").sum().round(2).alias("total_rate_value"),
+).sort("total_rate_value", descending=True)
+
+summary
+```
+
+## Component Breakdown
+
+Separate market sizing for each product component:
+
+- **HYDROGEL** — procedures substitutable by the hydrogel filling alone
+- **CROWN** — procedures substitutable by the bio-crown alone
+- **BOTH** — procedures requiring the full UCleaner product (hydrogel + crown)
+
+```{python}
+alt.Chart(summary).mark_bar().encode(
+    alt.X("classification:N", title="Product Component", sort="-y"),
+    alt.Y("total_rate_value:Q", title="Total Rate Value ($)"),
+    alt.Color("classification:N", scale=alt.Scale(
+        domain=["HYDROGEL", "CROWN", "BOTH"],
+        range=["#4c78a8", "#f58518", "#e45756"]
+    ), legend=None),
+    alt.Tooltip(["classification", "num_codes", "mean_rate", "total_rate_value"]),
+).properties(
+    title="Addressable Market Value by Product Component",
+    width=400,
+    height=350,
+)
+```
+
+```{python}
+alt.Chart(addressable).mark_circle(opacity=0.7).encode(
+    alt.X("avg_negotiated_rate:Q", title="Average Negotiated Rate ($)"),
+    alt.Y("billing_code:N", sort="-x", title="CDT Code"),
+    alt.Color("classification:N", scale=alt.Scale(
+        domain=["HYDROGEL", "CROWN", "BOTH"],
+        range=["#4c78a8", "#f58518", "#e45756"]
+    )),
+    alt.Size("dif_negotiated_rate:Q", title="Rate Spread ($)"),
+    alt.Tooltip(["billing_code", "code_desc", "classification", "avg_negotiated_rate", "dif_negotiated_rate"]),
+).properties(
+    title="Addressable Procedures: Rate vs. Classification",
+    width=700,
+    height=max(len(addressable) * 16, 300),
+)
+```
+
+## Key Takeaways
+
+```{python}
+total_addressable = addressable["avg_negotiated_rate"].sum()
+hydrogel_only = addressable.filter(pl.col("classification") == "HYDROGEL")["avg_negotiated_rate"].sum()
+crown_only = addressable.filter(pl.col("classification") == "CROWN")["avg_negotiated_rate"].sum()
+both = addressable.filter(pl.col("classification") == "BOTH")["avg_negotiated_rate"].sum()
+
+print(f"Total addressable rate value: ${total_addressable:,.2f}")
+print(f"  Hydrogel component: ${hydrogel_only:,.2f} ({hydrogel_only/total_addressable:.1%})")
+print(f"  Crown component:    ${crown_only:,.2f} ({crown_only/total_addressable:.1%})")
+print(f"  Full product:       ${both:,.2f} ({both/total_addressable:.1%})")
+print()
+print(f"Out of {total_codes} dental procedures analyzed, {addressable_codes} ({addressable_codes/total_codes:.1%})")
+print(f"are addressable by UCleaner's tissue-regeneration biologic product.")
+```
+
+```{python}
+con.close()
+```

@@ -1,0 +1,72 @@
+---
+title: "Infrastructure: Pipeline Setup"
+format:
+  html:
+    code-fold: false
+execute:
+  echo: true
+jupyter: python3
+---
+
+## Configuration
+
+```{python}
+from pathlib import Path
+
+from cost_pred.ingest import ingest_dental
+from cost_pred.db import get_connection, create_base_tables, load_classification_results, BRONZE_DIR
+```
+
+## Ingestion: Raw JSON to Bronze Parquet
+
+Converts the raw CMS transparency JSON files from Liberty Dental into parquet format. Each raw file is exploded (nested `in_network` -> `negotiated_rates` -> `negotiated_prices`) and written to `data/lakehouse/bronze/`.
+
+```{python}
+ingest_dental()
+print(f"Bronze files: {list(BRONZE_DIR.glob('*_in-network-rates.parquet'))}")
+```
+
+## Table Creation: Bronze Parquet to DuckDB
+
+Creates two tables in DuckDB:
+
+- **`lib_dental_cdt`** — raw rows from all bronze parquet files
+- **`lib_dental_cost`** — deduplicated and aggregated: min/max/avg negotiated rates per billing code, with boolean flags for crown/inlay/filling procedures
+
+```{python}
+con = get_connection()
+create_base_tables(con)
+```
+
+## Classification Loading
+
+Loads pre-computed Claude Haiku LLM classifications from the silver layer. Each CDT code is classified as HYDROGEL, CROWN, BOTH, or NONE based on whether UCleaner's product could substitute for that procedure.
+
+If the classification cache doesn't exist, run `uv run python3 scripts/build_classification_cache.py` first.
+
+```{python}
+load_classification_results(con)
+```
+
+## Validation
+
+```{python}
+for table in ["lib_dental_cdt", "lib_dental_cost", "lib_dental_deepseek"]:
+    count = con.sql(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+    cols = [r[0] for r in con.sql(f"DESCRIBE {table}").fetchall()]
+    print(f"{table}: {count:,} rows, {len(cols)} columns")
+    print(f"  columns: {cols}")
+    print()
+```
+
+```{python}
+con.sql("SELECT * FROM lib_dental_cost LIMIT 5")
+```
+
+```{python}
+con.sql("SELECT * FROM lib_dental_deepseek LIMIT 5")
+```
+
+```{python}
+con.close()
+```

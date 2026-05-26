@@ -1,0 +1,133 @@
+---
+title: "Rate Analysis: Negotiated Rate Distributions"
+format:
+  html:
+    code-fold: false
+execute:
+  echo: true
+jupyter: python3
+---
+
+## Setup
+
+```{python}
+import altair as alt
+import polars as pl
+
+from cost_pred.db import get_connection
+
+con = get_connection(read_only=True)
+```
+
+## Rate Distribution Overview
+
+Summary statistics and distribution of average negotiated rates across all CDT codes.
+
+```{python}
+rates = pl.from_arrow(
+    con.sql("""
+        SELECT
+              billing_code
+            , code_desc
+            , avg_negotiated_rate
+            , min_negotiated_rate
+            , max_negotiated_rate
+            , dif_negotiated_rate
+        FROM lib_dental_cost
+    """).arrow()
+)
+
+rates.describe()
+```
+
+```{python}
+alt.Chart(rates).mark_bar().encode(
+    alt.X("avg_negotiated_rate:Q", bin=alt.Bin(maxbins=40), title="Average Negotiated Rate ($)"),
+    alt.Y("count()", title="Number of Procedure Codes"),
+).properties(
+    title="Distribution of Average Negotiated Rates",
+    width=600,
+    height=350,
+)
+```
+
+## Rates by Procedure Type
+
+Compare rate distributions for procedures flagged as crown, inlay, or filling-related.
+
+```{python}
+by_type = pl.from_arrow(
+    con.sql("""
+        SELECT
+              billing_code
+            , code_desc
+            , avg_negotiated_rate
+            , contains_crown
+            , contains_inlay
+            , contains_filling
+        FROM lib_dental_cost
+    """).arrow()
+)
+
+type_long = by_type.unpivot(
+    on=["contains_crown", "contains_inlay", "contains_filling"],
+    index=["billing_code", "code_desc", "avg_negotiated_rate"],
+    variable_name="procedure_type",
+    value_name="matches",
+).filter(pl.col("matches") == True).with_columns(
+    pl.col("procedure_type").str.replace("contains_", "").alias("procedure_type")
+)
+```
+
+```{python}
+alt.Chart(type_long).mark_boxplot(extent="min-max").encode(
+    alt.X("procedure_type:N", title="Procedure Type"),
+    alt.Y("avg_negotiated_rate:Q", title="Average Negotiated Rate ($)"),
+    alt.Color("procedure_type:N", legend=None),
+).properties(
+    title="Rate Distribution by Procedure Type",
+    width=400,
+    height=350,
+)
+```
+
+## Rate Spread Analysis
+
+Which procedures have the largest gap between minimum and maximum negotiated rates? High spread indicates significant pricing variability across providers.
+
+```{python}
+spread = pl.from_arrow(
+    con.sql("""
+        SELECT
+              billing_code
+            , code_desc
+            , min_negotiated_rate
+            , max_negotiated_rate
+            , dif_negotiated_rate
+            , avg_negotiated_rate
+        FROM lib_dental_cost
+        ORDER BY dif_negotiated_rate DESC
+    """).arrow()
+)
+
+spread.head(15)
+```
+
+```{python}
+top_spread = spread.head(20)
+
+alt.Chart(top_spread).mark_bar().encode(
+    alt.X("dif_negotiated_rate:Q", title="Rate Spread (Max - Min, $)"),
+    alt.Y("billing_code:N", sort="-x", title="CDT Code"),
+    alt.Color("avg_negotiated_rate:Q", scale=alt.Scale(scheme="blues"), title="Avg Rate ($)"),
+    alt.Tooltip(["billing_code", "code_desc", "min_negotiated_rate", "max_negotiated_rate", "dif_negotiated_rate"]),
+).properties(
+    title="Top 20 Procedures by Negotiated Rate Spread",
+    width=600,
+    height=450,
+)
+```
+
+```{python}
+con.close()
+```
