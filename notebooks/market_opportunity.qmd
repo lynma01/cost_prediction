@@ -8,6 +8,35 @@ execute:
 jupyter: python3
 ---
 
+## Relevant Dental Procedures
+
+UCleaner's tissue-regeneration biologic targets the following categories of dental procedures for damaged and/or decaying teeth:
+
+1. **Crowns** — amalgam and composite crown installations
+2. **Inlays and onlays** — partial coverage restorations
+3. **Fillings** — for living but damaged or decayed teeth
+4. **Multi-coded services** — procedures requiring both crowns and fillings
+
+### Exclusions
+
+Denture installations and any procedures requiring the application of dental cement or adhesive *specifically* for fixing a dental implant to oral tissue are not addressable by this product.
+
+### Periodontal Disease Classification
+
+The product can be used in the above procedures regardless of the periodontal disease classification (Stage I through IV). Extent is described as localized, generalized, or molar/incisor pattern for each stage.^[Source: [Modern Periodontics](https://modernperio.com/periodontal-diseases/periodontal-staging-and-grading/)]
+
+| **Periodontitis** | **Stage I** | **Stage II** | **Stage III** | **Stage IV** |
+|---|---|---|---|---|
+| **Severity** |||||
+| Interdental CAL | 1–2 mm | 3–4 mm | ≥ 5 mm | ≥ 5 mm |
+| RBL | Coronal third (<15%) | Coronal third (15–33%) | Extending middle third of root and beyond | Extending middle third of root and beyond |
+| Tooth Loss | No tooth loss | No tooth loss | ≤ 4 teeth | ≥ 5 teeth |
+| **Complexity** |||||
+| | Max. probing depth ≤ 4 mm | Max. probing depth ≤ 5 mm | Probing depths ≥ 6 mm | Need for complex rehabilitation due to: |
+| | Mostly horizontal bone loss | Mostly horizontal bone loss | Vertical bone loss ≥ 3 mm | Masticatory dysfunction |
+| | | | Furcation involvement Class II or III | Secondary occlusal trauma |
+| | | | Moderate ridge defects | |
+
 ## Setup
 
 ```{python}

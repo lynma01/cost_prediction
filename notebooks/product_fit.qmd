@@ -8,6 +8,21 @@ execute:
 jupyter: python3
 ---
 
+## UCleaner's Product
+
+The UCleaner LLC product is a tissue-regeneration biologic composed of two parts:
+
+1. **Hydrogel filling** — A biosynthetically derived hydrogel suffused with specific dental growth factors for recruiting stem-cells from the pulp for tissue regeneration in the dentum and/or enamel. This component would replace conventional dental fillings, which completely block the movement and recruitment of cells.
+
+2. **Bio-crown** — An additively-manufactured crown composed of biologically sympathetic ingredients for protecting the exposed pulp or dentum cells within a decayed or damaged tooth. This crown ensures that the recruited stem-cells from the pulp are also able to traverse to the outer-most layer of the teeth, while also protecting the tooth-interior from daily use.
+
+Each CDT procedure code in the dataset is classified by an LLM into one of four categories based on how it relates to these components:
+
+- **HYDROGEL** — procedures substitutable by the hydrogel filling alone
+- **CROWN** — procedures substitutable by the bio-crown alone
+- **BOTH** — procedures requiring the full product (hydrogel + crown)
+- **NONE** — procedures not applicable to UCleaner's product
+
 ## Setup
 
 ```{python}
