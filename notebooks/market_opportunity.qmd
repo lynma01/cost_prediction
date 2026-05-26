@@ -70,7 +70,7 @@ addressable = pl.from_arrow(
 )
 
 total_codes = con.sql("SELECT COUNT(DISTINCT billing_code) FROM lib_dental_deepseek").fetchone()[0]
-addressable_codes = len(addressable)
+addressable_codes = addressable["billing_code"].n_unique()
 
 print(f"Total CDT codes analyzed: {total_codes}")
 print(f"Addressable codes (HYDROGEL/CROWN/BOTH): {addressable_codes}")
