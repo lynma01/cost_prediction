@@ -12,23 +12,11 @@ Analyzes the Common Dental Terminology codes (CDTs) and their prices from a vari
 
 ## Images
 
-### Rate Spread Analysis
-
-Which procedures have the largest pricing variability across insurers?
-
-[![Rate spread analysis](images/rate_spread.png)](notebooks/rate_analysis.qmd#rate-spread-analysis)
-
 ### Classification Distribution
 
 How Claude Haiku classified each CDT code by product fit.
 
 [![Classification distribution](images/classification_dist.png)](notebooks/product_fit.qmd#classification-distribution)
-
-### Market Opportunity by Component
-
-Addressable market value broken down by product component.
-
-[![Market breakdown](images/market_breakdown.png)](notebooks/market_opportunity.qmd#component-breakdown)
 
 ## Methods
 
