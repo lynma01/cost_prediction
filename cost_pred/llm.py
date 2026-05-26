@@ -1,29 +1,29 @@
-# %%
-import configparser
 import os
-from google import genai
+from pathlib import Path
 
-# %%
-def get_gemini_api_key(config_file: str = "../.ini") -> str | None:
-    config = configparser.ConfigParser()
-    if not os.path.exists(config_file):
-        print(f"Error: Configuration file '{config_file}' not found.")
-        return None
+import anthropic
+from dotenv import load_dotenv
 
-    config.read(config_file)
 
-    try:
-        return str(config.get("gemini", "api_key"))
-    except (configparser.NoSectionError, configparser.NoOptionError) as e:
-        print(f"Error reading API key from '{config_file}': {e}")
-        return None
+load_dotenv(Path(__file__).parent.parent / ".env")
 
-# %%
-def determine_product_fit(cdt_col: str, desc_col: str, key: str = get_gemini_api_key()) -> str:
+
+def get_api_key() -> str | None:
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if key is None:
+        print("Error: ANTHROPIC_API_KEY not found in environment. Check your .env file.")
+    return key
+
+
+def determine_product_fit(cdt_col: str, desc_col: str, key: str | None = None) -> str:
+    if key is None:
+        key = get_api_key()
+    if key is None:
+        raise RuntimeError("ANTHROPIC_API_KEY not set.")
 
     prompt = f"""
     Your job is to provide two things: 1) a one word response of 'HYDROGEL', 'CROWN', 'BOTH', or 'NONE' based on whether or not a given dental procedure can be successfully substituted with the one, both, or none of the components comprising the UCleaner LLC product, and 2) a summary of your reasoning as to why you provided the answer you did. The response should be formatted in `json` format with the following keys: "response", and "reasoning".
-    
+
     You will be provided with the Common Dental Terminology code (CDT code) and a description of the procedure, and a description of the UCleaner LLC product and some reference information to aid in your determination.
 
     ## CDT Code to analyze
@@ -33,7 +33,7 @@ def determine_product_fit(cdt_col: str, desc_col: str, key: str = get_gemini_api
 
     ## UC Cleaner LLC Product:
 
-    The UCleaner LLC product is a tissue-regeneration biologic composed of two parts: 
+    The UCleaner LLC product is a tissue-regeneration biologic composed of two parts:
 
     1) A biosynthetically derived hydrogel suffused with specific dental growth factors for recruiting stem-cells from the pulp for tissue regeneration in the dentum and/or enamel. This part of the product would replace conventional dental fillings which completely block the movement/recruitment of cells.
 
@@ -51,8 +51,11 @@ def determine_product_fit(cdt_col: str, desc_col: str, key: str = get_gemini_api
     4. Multi-coded services requiring both crowns and fillings
     """
 
-    client = genai.Client(api_key=key)
-    response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
-    
-    return str(response.candidates[0].content.parts[0].text).replace("```json", "").replace("```", "")
-# %%
+    client = anthropic.Anthropic(api_key=key)
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    return response.content[0].text.replace("```json", "").replace("```", "")

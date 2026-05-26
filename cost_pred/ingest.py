@@ -1,14 +1,17 @@
 import polars as pl
 
+from cost_pred import PROJECT_ROOT
+
+
 def ingest_dental() -> bool:
-    
+
     files = [
           "data/lakehouse/raw_source/2025-05-02_Liberty_KFHP-MAS-DC-FFS_in-network-rates.json"
         , "data/lakehouse/raw_source/2025-05-02_Liberty_KFHP-MAS-MD-FFS_in-network-rates.json"
         , "data/lakehouse/raw_source/2025-05-14_Liberty_KFHP-MAS-VA-FFS_in-network-rates.json"]
 
     for f in files:
-        df = pl.read_json(f)
+        df = pl.read_json(str(PROJECT_ROOT / f))
         df = df.with_columns(pl.lit(f).alias("source_file"))
         df = df.explode("in_network").unnest("in_network")
         df = df.explode("negotiated_rates").unnest("negotiated_rates")
@@ -29,10 +32,10 @@ def ingest_dental() -> bool:
             , pl.col("negotiated_rate")
             , pl.col("billing_class"))
 
-        output_path = f.replace("raw_source", "bronze").replace(".json", ".parquet")
+        output_path = str(PROJECT_ROOT / f.replace("raw_source", "bronze").replace(".json", ".parquet"))
         df.write_parquet(output_path, compression="snappy")
 
     return True
 
 if __name__ == "__main__":
-    main()
+    ingest_dental()
