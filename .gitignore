@@ -25,3 +25,5 @@ gemini_key.json
 *.html
 _output
 .quarto
+/.quarto/
+**/*.quarto_ipynb
